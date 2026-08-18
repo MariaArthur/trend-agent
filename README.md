@@ -2,6 +2,12 @@
 
 An agentic AI research assistant that monitors what's trending in a market, product, or brand — using **real, live web data** (not hardcoded fixtures), real sentiment scoring, and a persistent watchlist that builds an actual trend-over-time history.
 
+![Python](https://img.shields.io/badge/-Python-3776AB?style=flat&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)
+![SQLite](https://img.shields.io/badge/-SQLite-003B57?style=flat&logo=sqlite&logoColor=white)
+
+*(Badges pull real brand logos live from [Simple Icons](https://simpleicons.org) via [shields.io](https://shields.io) — the standard way to show official logos in a README without redistributing the artwork yourself. Neither Groq nor Tavily has an icon in Simple Icons' library yet — I checked rather than guess — so they're left off the badge row; both are fully covered in the architecture diagram and text below.)*
+
 ## Why this exists
 
 Automated market/competitive intelligence is a real, well-established B2B category — tools like **Klue**, **Crayon**, and **Contify** sell exactly this (automated trend + competitor monitoring) to marketing and product teams, typically for **$15k–$40k/year per enterprise contract**. This project is a lightweight version of that same idea: point it at a topic, brand, or competitor, and it researches, scores, and tracks it — grounded in real search results, not the LLM's memory.
@@ -14,42 +20,19 @@ Automated market/competitive intelligence is a real, well-established B2B catego
 - **Trend charts** — the dashboard tab plots sentiment over time from actual stored scan history
 - **Real scheduling path** — `scan_watchlist.py` is a standalone script (no LLM involved) that a real cron job or GitHub Actions workflow can call automatically, separate from the chat UI
 
+## Demo
+
+This isn't deployed to a public URL — it runs on personal API keys with usage-based cost, so a public link would mean strangers spending your credits. Instead, every API key used here has a genuine free tier (Groq and Tavily both, no card required), so anyone reviewing this can run it end-to-end in a few minutes with their own keys — see [Running it locally](#running-it-locally) below.
+
 ---
 
 ## Architecture
 
-```
-┌─────────────┐     ┌──────────────────┐     ┌───────────────────────┐
-│   User      │────▶│   Streamlit UI     │────▶│   Agent Orchestrator   │
-│  (browser)  │◀────│  (app.py)          │◀────│  (agent.py)             │
-└─────────────┘     └──────────────────┘     └──────────┬──────────────┘
-                                                            │
-                                        ┌───────────────────┼────────────────────┐
-                                        ▼                                        ▼
-                              ┌──────────────────┐                   ┌───────────────────────┐
-                              │   Groq API         │                   │   Tool Functions         │
-                              │  (Llama 3.3 70B,    │◀────calls────────│   (tools.py)              │
-                              │   OpenAI-style       │────results──────▶│   search_web               │
-                              │   tool calling)       │                  │   build_trend_report         │
-                              └──────────────────┘                   │   compare_topics              │
-                                                                        │   watchlist tools (4)          │
-                                                                        └──────────┬─────────────────────┘
-                                                                                     │
-                                                          ┌──────────────────────────┼──────────────────────────┐
-                                                          ▼                                                      ▼
-                                              ┌─────────────────────┐                              ┌─────────────────────┐
-                                              │   Tavily Search API   │                              │   SQLite (watchlist.db)│
-                                              │   (real web + news)    │                              │   real persistent        │
-                                              └─────────────────────┘                              │   trend history            │
-                                                                                                        └─────────────────────┘
-                                                                                                                    ▲
-                                                                                                        ┌───────────┴───────────┐
-                                                                                                        │  scan_watchlist.py       │
-                                                                                                        │  (cron / GitHub Actions)  │
-                                                                                                        └───────────────────────┘
-```
+![Architecture diagram](docs/architecture_diagram.png)
 
-**Flow in plain English:** the user asks a question in the chat → Streamlit sends the conversation + tool schemas to Groq's Llama 3.3 70B → the model either answers directly or requests a tool call → Python executes the real function (a live Tavily search, a real VADER sentiment score, or a SQLite read/write) → the result goes back to the model → the model produces a grounded final answer, citing real sources → the UI shows it, along with a visible `🔎 Researching with build_trend_report...` indicator so the mechanism is transparent.
+**Flow in plain English:** the user talks to the **Streamlit** app, which branches out to two services — **Tavily** for real web/news search, and **Groq** for the LLM (running `openai/gpt-oss-120b` with tool calling). Under the hood this branching is the tool-calling loop in `agent.py`: Streamlit hands the conversation to Groq, Groq decides whether to call a tool, and if so Python executes the real function (a live Tavily search, a VADER sentiment score, or a SQLite read/write) before the result goes back to Groq for a grounded final answer.
+
+A third piece not pictured above: `scan_watchlist.py` is a standalone script that calls the same tool functions directly, on a real schedule (cron / GitHub Actions), without going through Groq at all — since a scheduled scan is just search → score → store, there's no reason to spend an LLM call triggering it.
 
 Separately, the **watchlist scan** doesn't need an LLM at all — it's a deterministic pipeline (search → score → store), so `scan_watchlist.py` can run on a real schedule independent of the chat interface, which is how you'd actually operationalize "check this every morning" in production.
 
@@ -80,7 +63,7 @@ This matters more here than in a typical Q&A bot: a fabricated *bill amount* is 
 
 ## Tech stack
 
-- **LLM with tool calling:** [Groq API](https://console.groq.com/docs) running `llama-3.3-70b-versatile` — fast (hundreds of tokens/sec), OpenAI-compatible tool-calling format, generous free tier
+- **LLM with tool calling:** [Groq API](https://console.groq.com/docs) running `openai/gpt-oss-120b` — OpenAI's open-weight model, hosted on Groq's fast inference hardware (hundreds of tokens/sec), OpenAI-compatible tool-calling format. **Groq's model lineup changes fairly often** (Llama chat models were retired from the production tier since this project was first scaffolded) — check [console.groq.com/docs/models](https://console.groq.com/docs/models) for the current list before assuming a model string still works
 - **Real web search:** [Tavily](https://tavily.com) — a search API purpose-built for LLM agents; free tier gives 1,000 searches/month, no card required
 - **Sentiment:** [VADER](https://github.com/cjhutto/vaderSentiment) — a local, offline lexicon-based sentiment model (no extra API calls or cost)
 - **Persistence:** SQLite (`data/watchlist.db`) — real trend-over-time history, not session state
