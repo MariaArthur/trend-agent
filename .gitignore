@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+data/watchlist.db
+.streamlit/secrets.toml
+scan.log

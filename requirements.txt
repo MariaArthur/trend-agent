@@ -1,0 +1,7 @@
+streamlit>=1.38
+python-dotenv>=1.0
+groq>=0.11
+tavily-python>=0.5
+vaderSentiment>=3.3
+pandas>=2.0
+plotly>=5.22
