@@ -6,8 +6,6 @@ An agentic AI research assistant that monitors what's trending in a market, prod
 ![Streamlit](https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![SQLite](https://img.shields.io/badge/-SQLite-003B57?style=flat&logo=sqlite&logoColor=white)
 
-*(Badges pull real brand logos live from [Simple Icons](https://simpleicons.org) via [shields.io](https://shields.io) — the standard way to show official logos in a README without redistributing the artwork yourself. Neither Groq nor Tavily has an icon in Simple Icons' library yet — I checked rather than guess — so they're left off the badge row; both are fully covered in the architecture diagram and text below.)*
-
 ## Why this exists
 
 Automated market/competitive intelligence is a real, well-established B2B category — tools like **Klue**, **Crayon**, and **Contify** sell exactly this (automated trend + competitor monitoring) to marketing and product teams, typically for **$15k–$40k/year per enterprise contract**. This project is a lightweight version of that same idea: point it at a topic, brand, or competitor, and it researches, scores, and tracks it — grounded in real search results, not the LLM's memory.
